@@ -1,5 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
+using System.Diagnostics;
+using System.Linq;
 
 namespace Task.Generics {
 
@@ -22,10 +25,10 @@ namespace Task.Generics {
 		///   { ConsoleColor.Black, ConsoleColor.Blue, ConsoleColor.Cyan } => "Black,Blue,Cyan"
 		///   { new TimeSpan(1, 0, 0), new TimeSpan(0, 0, 30) } => "01:00:00,00:00:30",
 		/// </example>
-		public static string ConvertToString<T>(this IEnumerable<T> list) {
-			// TODO : Implement ConvertToString<T>
-			throw new NotImplementedException();
-		}
+		public static string ConvertToString<T>(this IEnumerable<T> list)
+        {
+            return string.Join(ListSeparator.ToString(), list);
+        }
 
 		/// <summary>
 		///   Converts the string respresentation to the list of items
@@ -46,8 +49,13 @@ namespace Task.Generics {
 		public static IEnumerable<T> ConvertToList<T>(this string list) {
 			// TODO : Implement ConvertToList<T>
 			// HINT : Use TypeConverter.ConvertFromString method to parse string value
-			throw new NotImplementedException();
-		}
+            return list.Split(ListSeparator).Select(x =>
+            {
+                var converter = TypeDescriptor.GetConverter(typeof(T));
+                var item = (T)converter.ConvertFromString(x);
+                return item;
+            });
+        }
 
 	}
 
@@ -61,9 +69,10 @@ namespace Task.Generics {
 		/// <param name="index1">first index</param>
 		/// <param name="index2">second index</param>
 		public static void SwapArrayElements<T>(this T[] array, int index1, int index2) {
-			// TODO : Implement SwapArrayElements<T>
-			throw new NotImplementedException();
-		}
+            var temp = array[index1];
+            array[index1] = array[index2];
+            array[index2] = temp;
+        }
 
 		/// <summary>
 		///   Sorts the tuple array by specified column in ascending or descending order
@@ -91,56 +100,106 @@ namespace Task.Generics {
 		///     { 1, "a", false },
 		///   }
 		/// </example>
-		public static void SortTupleArray<T1, T2, T3>(this Tuple<T1, T2, T3>[] array, int sortedColumn, bool ascending) {
-			// TODO :SortTupleArray<T1, T2, T3>
-			// HINT : Add required constraints to generic types
-		}
+		public static void SortTupleArray<T1, T2, T3>(this Tuple<T1, T2, T3>[] array, int sortedColumn, bool ascending) 
+            where T1: IComparable 
+            where T2 : IComparable 
+            where  T3: IComparable{
+            switch (sortedColumn)
+            {
+				case 0:
+					Array.Sort(array, (a, b) => a.Item1.CompareTo(b.Item1));
+					break;
+				case 1:
+                    Array.Sort(array, (a, b) => a.Item2.CompareTo(b.Item2));
+					break;
+				case 2:
+                    Array.Sort(array, (a, b) => a.Item3.CompareTo(b.Item3));
+					break;
+				default:
+					throw new IndexOutOfRangeException();
+			}
 
-	}
+            if (!ascending)
+            {
+                Array.Reverse(array);
+            }
+        }
+    }
 
-	/// <summary>
-	///   Generic singleton class
-	/// </summary>
-	/// <example>
-	///   This code should return the same MyService object every time:
-	///   MyService singleton = Singleton<MyService>.Instance;
-	/// </example>
-	public static class Singleton<T> {
-		// TODO : Implement generic singleton class 
+    /// <summary>
+    ///   Generic singleton class
+    /// </summary>
+    /// <example>
+    ///   This code should return the same MyService object every time:
+    ///   MyService singleton = Singleton<MyService>.Instance;
+    /// </example>
+    public static class Singleton<T> where T : class, new() {
+        private static T _instance;
+        private static readonly object Padlock = new object();
 
-		public static T Instance {
-			get { throw new NotImplementedException(); }
-		}
-	}
+        public static T Instance
+        {
+            get
+            {
+                if (_instance == null)
+                {
+                    lock (Padlock)
+                    {
+                        if (_instance == null)
+                        {
+                            _instance = new T();
+                        }
+                    }
+                }
 
-
-
-	public static class FunctionExtentions {
-		/// <summary>
-		///   Tries to invoke the specified function up to 3 times if the result is unavailable 
-		/// </summary>
-		/// <param name="function">specified function</param>
-		/// <returns>
-		///   Returns the result of specified function, if WebException occurs duaring request then exception should be logged into trace 
-		///   and the new request should be started (up to 3 times).
-		/// </returns>
-		/// <example>
-		///   Sometimes if network is unstable it is required to try several request to get data:
-		///   
-		///   Func<string> f1 = ()=>(new System.Net.WebClient()).DownloadString("http://www.google.com/");
-		///   string data = f1.TimeoutSafeInvoke();
-		///   
-		///   If the first attemp to download data is failed by WebException then exception should be logged to trace log and the second attemp should be started.
-		///   The second attemp has the same workflow.
-		///   If the third attemp fails then this exception should be rethrow to the application.
-		/// </example>
-		public static T TimeoutSafeInvoke<T>(this Func<T> function) {
-			// TODO : Implement TimeoutSafeInvoke<T>
-			throw new NotImplementedException();
-		}
+                return _instance;
+            }
+        }
+    }
 
 
-		/// <summary>
+
+    public static class FunctionExtentions {
+        /// <summary>
+        ///   Tries to invoke the specified function up to 3 times if the result is unavailable 
+        /// </summary>
+        /// <param name="function">specified function</param>
+        /// <returns>
+        ///   Returns the result of specified function, if WebException occurs duaring request then exception should be logged into trace 
+        ///   and the new request should be started (up to 3 times).
+        /// </returns>
+        /// <example>
+        ///   Sometimes if network is unstable it is required to try several request to get data:
+        ///   
+        ///   Func<string> f1 = ()=>(new System.Net.WebClient()).DownloadString("http://www.google.com/");
+        ///   string data = f1.TimeoutSafeInvoke();
+        ///   
+        ///   If the first attemp to download data is failed by WebException then exception should be logged to trace log and the second attemp should be started.
+        ///   The second attemp has the same workflow.
+        ///   If the third attemp fails then this exception should be rethrow to the application.
+        /// </example>
+        public static T TimeoutSafeInvoke<T>(this Func<T> function) {
+            try
+            {
+                return function.Invoke();
+            }
+            catch (Exception e)
+            {
+               Trace.WriteLine(e);
+               try
+               {
+                   return function.Invoke();
+               }
+               catch (Exception exception)
+               {
+					Trace.WriteLine(exception);
+                    return function.Invoke();
+               }
+            }
+        }
+
+
+        /// <summary>
 		///   Combines several predicates using logical AND operator 
 		/// </summary>
 		/// <param name="predicates">array of predicates</param>
@@ -164,11 +223,10 @@ namespace Task.Generics {
 		///       })
 		/// </example>
 		public static Predicate<T> CombinePredicates<T>(Predicate<T>[] predicates) {
-			// TODO : Implement CombinePredicates<T>
-			throw new NotImplementedException();
-		}
+            return item => predicates.All(predicate => predicate(item));
+        }
 
-	}
+    }
 
 
 }
